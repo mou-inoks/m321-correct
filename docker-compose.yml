@@ -1,0 +1,61 @@
+services:
+
+  backend:
+    build:
+      context: ./backend   
+      dockerfile: Dockerfile 
+    container_name: backend
+    ports:
+      - "3001:3001"  
+    networks:
+      - app-network
+    environment:
+      NODE_ENV: production 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.stream.cfpt.info`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+
+  frontend:
+    image: nginx
+    volumes:
+      #- ./nginx.conf:/etc/nginx/conf.d/:ro
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - 80:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`stream.cfpt.info`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+
+  transcoding: 
+    build:
+      context: ./transcoding   
+      dockerfile: Dockerfile 
+    container_name: transcoding
+    ports:
+      - "3002:3002"  
+    networks:
+      - app-network
+    environment:
+      NODE_ENV: production 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.stream.cfpt.info`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+
+
+networks:
+  app-network:
+    driver: bridge
