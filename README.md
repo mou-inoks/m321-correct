@@ -32,5 +32,3 @@ volumes:
   video-uploads:
 ```
 
-
-Ce fichier couvre les principales fonctionnalités de votre projet et détaille la configuration Docker-Compose. Vous pouvez l'adapter si nécessaire.
