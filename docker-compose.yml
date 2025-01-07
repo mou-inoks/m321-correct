@@ -5,10 +5,12 @@ services:
       context: ./backend   
       dockerfile: Dockerfile 
     container_name: backend
+    volumes:
+      - video-uploads:/app/uploads
+    depends_on:
+      - rabbitmq
     ports:
-      - "3001:3001"  
-    networks:
-      - app-network
+      - "9000:3000"  
     environment:
       NODE_ENV: production 
     labels:
@@ -17,45 +19,56 @@ services:
       - "traefik.http.routers.backend.entrypoints=web"
 
   frontend:
-    image: nginx
-    volumes:
-      #- ./nginx.conf:/etc/nginx/conf.d/:ro
-      - ./frontend:/usr/share/nginx/html
+    build: ./frontend
+    depends_on:
+      - backend
     ports:
-      - 80:80
+      - 3001:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`stream.cfpt.info`)"
       - "traefik.http.routers.frontend.entrypoints=web"
 
-  transcoding: 
-    build:
-      context: ./transcoding   
-      dockerfile: Dockerfile 
-    container_name: transcoding
+  transcoding:
+    build: ./transcoding
+    container_name: stream-cfpt-transcoding
     ports:
-      - "3002:3002"  
-    networks:
-      - app-network
-    environment:
-      NODE_ENV: production 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`api.stream.cfpt.info`)"
-      - "traefik.http.routers.backend.entrypoints=web"
+      - "9001:3000"
+    restart: always
+    volumes:
+      - video-uploads:/app/uploads
+    depends_on:
+      - rabbitmq
+      - backend
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: 'rabbitmq'
     restart: always
-    ports:
-      - 5672:5672
-      - 15672:15672
     volumes:
       - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
       - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  reverse-proxy:
+    image: "traefik:v3.2"
+    container_name: "traefik"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    depends_on:
+      - frontend
+      - backend
 
 
-networks:
-  app-network:
-    driver: bridge
+volumes:
+  video-uploads:

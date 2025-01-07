@@ -1,9 +1,9 @@
-FROM nginx
+FROM nginx:alpine
+COPY . /usr/share/nginx/html
 
-#COPY ../nginx.conf /etc/nginx/conf.d    
+# expose port 80
+EXPOSE 80
+EXPOSE 49153
 
-COPY index.html /usr/share/nginx/html
-COPY styles.css /usr/share/nginx/html
-COPY scripts.js /usr/share/nginx/html
-
+# run nginx
 CMD ["nginx", "-g", "daemon off;"]
